@@ -346,8 +346,13 @@ void Trinbot::followWall(WallSide side_to_follow)
 
     
     if (front < front_obs_dist) {
-      left_pwm = -125;
-      right_pwm = 125;
+      if(front < front_obs_dist/2){
+        left_pwm = -125;
+        right_pwm = 100;
+      }else{
+        left_pwm = -100;
+        right_pwm = 150;
+      }
     } else {
       /*
       if (abs(dD) <= 3.0) {
@@ -361,11 +366,18 @@ void Trinbot::followWall(WallSide side_to_follow)
       //*/
        if (abs(dD) <= 3.0) {
        // float delta = f - wall_follow_dist;
-        left_pwm = 150 - dD*10.0;
-        right_pwm = 150 + dD*10.0;
+        left_pwm = 125 - dD*10.0;
+        right_pwm = 125 + dD*10.0;
       } else {
-        left_pwm = 150 - dD*20.0;
-        right_pwm = 150 + dD*20.0;
+        /* In the case of needing to turn right or left */
+        if(dD < 0){
+          left_pwm = 100 - dD*20.0;
+          right_pwm = 100 + dD*20.0;
+        }else{
+          left_pwm = 150 - dD*20.0;
+          right_pwm = 150 + dD*20.0;
+        }
+       
       }
        
       
