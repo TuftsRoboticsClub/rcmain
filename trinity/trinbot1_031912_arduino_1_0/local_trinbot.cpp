@@ -86,7 +86,7 @@ Trinbot::Trinbot() : DifferentialDrive()
   yPos = locations[0].y_coord;
   
   wall_follow_dist = 10.0;
-  front_obs_dist = 15.0;
+  front_obs_dist = 18.0;
 }
 
 void Trinbot::init()
@@ -106,10 +106,10 @@ void Trinbot::init()
   frontServo.attach(9);  
   co2Servo.attach(10);
   flDistSens.attach(A1);
-  rlDistSens.attach(A0);
-  frDistSens.attach(A2);
-  rrDistSens.attach(A3);
-  frontDistSens.attach(A4);
+  rlDistSens.attach(A9);
+  frDistSens.attach(A11);
+  rrDistSens.attach(A12);
+  frontDistSens.attach(A10);
   flameSens.attach(A5);
   
   co2Servo.write(co2Servo_up);
@@ -338,23 +338,39 @@ void Trinbot::followWall(WallSide side_to_follow)
     float f = frDistSens.distance();
     float r = rrDistSens.distance();
     float front = frontDistSens.distance();
-    f = constrain(f, 3.0, 30.0);
+    f = constrain(f, 3.0, 30.0);// - constrain(front, 3.0, 30.0)/2;
     r = constrain(r, 3.0, 30.0);
     front = constrain(front, 3.0, 30.0);
     float dD = (r - f);
+    dD = - dD;
+
+    
     if (front < front_obs_dist) {
       left_pwm = -125;
       right_pwm = 125;
     } else {
+      /*
       if (abs(dD) <= 3.0) {
         float delta = f - wall_follow_dist;
-        left_pwm = 150 + delta*3.0;
-        right_pwm = 150 - delta*3.0;
+        left_pwm = 125 + delta*3.0;
+        right_pwm = 125 - delta*3.0;
       } else {
-        left_pwm = 125 - dD*4.0;
-        right_pwm = 125 + dD*4.0;
+        left_pwm = 150 - dD*5.0;
+        right_pwm = 150 + dD*5.0;
       }
+      //*/
+       if (abs(dD) <= 3.0) {
+       // float delta = f - wall_follow_dist;
+        left_pwm = 150 - dD*10.0;
+        right_pwm = 150 + dD*10.0;
+      } else {
+        left_pwm = 150 - dD*20.0;
+        right_pwm = 150 + dD*20.0;
+      }
+       
+      
     }
+         
   } else {
     float f = flDistSens.distance();
     float r = rlDistSens.distance();

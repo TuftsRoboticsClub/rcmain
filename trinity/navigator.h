@@ -18,8 +18,8 @@ public:
 	int recordTurn(int angle);
 	void returnHome(); //Switch to ReturnHome mode 
 private:
-	bool returningHome = false;
-	vectorCount = 0;
+	bool returningHome;
+	int vectorCount;
 	void addVector();
 	void nextVector();
 };

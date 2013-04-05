@@ -19,7 +19,7 @@ To Do List: (last updated 03/20/12)
  * Test IR Sensors
  * 
  */
- 
+ #include "Arduino.h"
 #include "local_trinbot.h"
 
 int flame=0;
@@ -99,18 +99,18 @@ void loop() {
   Serial.print(constrain(trinbot.frDistSens.distance(),3.0,30.0));
   Serial.print("    ");    
   Serial.println(constrain(trinbot.rrDistSens.distance(),3.0,30.0));
- /*
+ 
  Serial.print(leftLine);
 Serial.print(" ");
  Serial.print(rightLine);
  Serial.println(" ");
- 
+ /*
  Serial.print(150 - (trinbot.frDistSens.distance()-trinbot.rrDistSens.distance())*2.0);
  Serial.print("  ");
  Serial.println(150 + (trinbot.frDistSens.distance()-trinbot.rrDistSens.distance())*2.0);
        // right_pwm = 150 + dD*2.0;
         
-   /*  
+   
    
  Serial.print("Front Left IR =  ");
 Serial.print(trinbot.flDistSens.distance());

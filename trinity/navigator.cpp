@@ -5,6 +5,8 @@ const int TURN_LEFT = 0,
 		  TURN_AROUND = 2;
 
 Navigator::Navigator(){
+	vectorCount = 0;
+	returningHome = false;
 	addVector();
 }
 
