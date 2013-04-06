@@ -19,7 +19,7 @@ To Do List: (last updated 03/20/12)
  * Test IR Sensors
  * 
  */
- #include "Arduino.h"
+#include "Arduino.h"
 #include "local_trinbot.h"
 
 int flame=0;
@@ -33,11 +33,15 @@ struct waypoint {
 WallSide last_wall, current_wall, wall_to_follow_in_room;
 
 int counter;
-int short_delay = 250, long_delay = 500;   // this is for 10V motor power, double both for 7V
+int prevCounter = 0;
+int short_delay = 250, long_delay = 350;   // this is for 10V motor power, double both for 7V
 long start_time, start_dOdom;
 int flameAngle;
 
 int state;
+int prevState = 0;
+
+
 const int HallwayNavigation = 10,
           AlignToLine = 11,
           CheckRoom = 12,
@@ -66,11 +70,14 @@ void setup() {
   trinbot.set_current_heading(90);
   trinbot.set_desired_velocity(15);
   
-  state = HallwayNavigation;
+  
+  //Initial movement foreward 
   state = 0;
   trinbot.left_motor.write(255);
   trinbot.right_motor.write(255);
   delay(1000);
+
+  state = HallwayNavigation;
 }
 
 void loop() {
@@ -92,18 +99,37 @@ void loop() {
   //trinbot.followWall(Right);
  
  trinbot.followWall(Right); 
-  unsigned int leftLine, rightLine;
-  trinbot.lineSensLeft.read(&leftLine);
-  trinbot.lineSensRight.read(&rightLine);
-  
+  unsigned int leftLine = trinbot.lineSensLeft.reflectance();
+  unsigned int rightLine = trinbot.lineSensRight.reflectance();
+ /* trinbot.lineSensLeft.read(&leftLine);
+  trinbot.lineSensRight.read(&rightLine);*/
+
+ /* //Right wall following info 
   Serial.print(constrain(trinbot.frDistSens.distance(),3.0,30.0));
   Serial.print("    ");    
   Serial.println(constrain(trinbot.rrDistSens.distance(),3.0,30.0));
- 
+ */
+  /*
  Serial.print(leftLine);
-Serial.print(" ");
+ Serial.print(" ");
  Serial.print(rightLine);
- Serial.println(" ");
+ Serial.println(" ");*/
+ if(leftLine < trinbot.leftLineThresh || rightLine < trinbot.rightLineThresh){
+   if(leftLine < trinbot.leftLineThresh){
+     Serial.print("LEFT: ");
+     Serial.print(leftLine);
+   }
+   if(rightLine < trinbot.rightLineThresh){
+     Serial.print("RIGHT: ");
+     Serial.print(rightLine);
+   }
+   Serial.println(" ");
+}
+
+ //Serial.print(trinbot.flameSens.read_filtered());
+ //Serial.println(" ");
+ 
+
  /*
  Serial.print(150 - (trinbot.frDistSens.distance()-trinbot.rrDistSens.distance())*2.0);
  Serial.print("  ");
@@ -127,7 +153,16 @@ Serial.println(trinbot.frontDistSens.distance());
 //  Serial.print(" ");
 //  Serial.print(trinbot.right_odom);
 //  Serial.println(" ");
-  
+   
+
+  if(prevState != state){
+    prevState = state;
+    Serial.println(" ");
+    Serial.print("State: ");
+    Serial.print(state);
+    Serial.println(" ");
+  }
+    
   switch (state) {
     // *******************************
     case HallwayNavigation:
@@ -137,11 +172,19 @@ Serial.println(trinbot.frontDistSens.distance());
       //If a door indicator is detected, iterate counter
       if (leftLine < trinbot.leftLineThresh || rightLine < trinbot.rightLineThresh) { counter++; } 
       else { counter = 0; }
+
+      if(prevCounter != counter){
+        Serial.println(" ");
+        Serial.print("Counter: ");
+        Serial.print(counter);
+        Serial.println(" ");
+      }
       
       //If a door indicator is detected for five intervals, back up and switch to AlignToLine state
-      if (counter > 5) { 
-        trinbot.left_motor.write(-150);
-        trinbot.right_motor.write(-150);
+      if (counter > 3) { 
+       /* trinbot.move(-150,-150, long_delay); */
+        trinbot.left_motor.write(-170);
+        trinbot.right_motor.write(-170);
         delay(long_delay);
         start_time = millis();
         start_dOdom = trinbot.left_odom-trinbot.right_odom;
@@ -173,14 +216,12 @@ Serial.println(trinbot.frontDistSens.distance());
    
    // *******************************
    case AlignToLine:
-      /* Attempt to allign with line towards room:
+     /* Attempt to allign with line towards room:
          - Adjust to line, if line is passed or aligned with, switch to checkroom state. */
-      if (abs(trinbot.left_pwm) > 40 || abs(trinbot.right_pwm) > 40) { counter = 0; } 
+    /*  if (abs(trinbot.left_pwm) > 40 || abs(trinbot.right_pwm) > 40) { counter = 0; } 
       else { counter++; }
 //      Serial.println(abs(start_dOdom - (trinbot.left_odom-trinbot.right_odom)));
-      if (counter < 100 && (millis()-start_time) < 1750 && abs(start_dOdom - (trinbot.left_odom-trinbot.right_odom)) < 150) {
-//      if (counter < 100 && (millis()-start_time) < 1750) {
-//      if (counter < 100) {
+      if (counter < 100 && (millis()-start_time) < 1750 /*&& abs(start_dOdom - (trinbot.left_odom-trinbot.right_odom)) < 150\) {
         trinbot.left_pwm = (int(leftLine)-trinbot.leftLineThresh)/7;
         trinbot.right_pwm = (int(rightLine)-trinbot.rightLineThresh)/7;
 //        trinbot.left_pwm = constrain(trinbot.left_pwm, -255,150);
@@ -188,6 +229,25 @@ Serial.println(trinbot.frontDistSens.distance());
       } else {
         state = CheckRoom;
         counter = 0;
+      }
+      */
+      if(counter > 810 || (leftLine < trinbot.leftLineThresh && rightLine < trinbot.rightLineThresh)){
+        state = CheckRoom;
+        counter = 0;
+      }else{
+        counter ++;
+        if(leftLine < trinbot.leftLineThresh){
+           trinbot.left_motor.write(-120);
+           trinbot.right_motor.write(120);
+        }
+        else if(leftLine < trinbot.leftLineThresh){
+           trinbot.left_motor.write(120);
+           trinbot.right_motor.write(-120);
+        }else {
+           counter ++;
+           trinbot.left_motor.write(120);
+           trinbot.right_motor.write(120);
+        }
       }
       break;
    // *******************************
@@ -221,7 +281,9 @@ Serial.println(trinbot.frontDistSens.distance());
 
       //Sweep for flame again
       trinbot.sweepForFlame();
-
+      Serial.print("maxFlameReading: ");
+      Serial.print(trinbot.maxFlameReading);
+      Serial.println(" ");
       //If flame found, switch to extinguish state, otherwise, backup and switch back to RoomNavigation state.
       if (trinbot.maxFlameReading > trinbot.flameThresh) {
         //if (abs(90-a) < 30) {
@@ -245,9 +307,11 @@ Serial.println(trinbot.frontDistSens.distance());
       //Attempt to Extinguish, then search again for flames
       trinbot.extinguish();
       trinbot.sweepForFlame();
-
+      Serial.print("maxFlameReading: ");
+      Serial.print(trinbot.maxFlameReading);
+      Serial.println(" ");
       //If flame successfully extinguished, back up, switch state to ReturnHome
-      if (trinbot.maxFlameReading < trinbot.flameThresh) {
+      if (trinbot.maxFlameReading > trinbot.flameThresh) {
         trinbot.left_motor.write(-255);
         trinbot.right_motor.write(-255);
         delay(short_delay);
@@ -270,8 +334,9 @@ Serial.println(trinbot.frontDistSens.distance());
 
       //Discover the angle of the flame (if its in the room) otherwise default to _____
       flameAngle = trinbot.sweepForFlame();
-      Serial.println(trinbot.maxFlameReading);
-      Serial.println(trinbot.maxFlameDir);
+         Serial.print("maxFlameReading: ");
+      Serial.print(trinbot.maxFlameReading);
+      Serial.println(" ");
 
       //Setup wall to follow based off of the what diretion the flame is in 
       if (flameAngle > 90) {
@@ -291,14 +356,15 @@ Serial.println(trinbot.frontDistSens.distance());
         state = RoomNavigation;
         counter = 0;
       } else {
+         Serial.println("No flame: backing out and turning around.");
         trinbot.left_motor.write(-255);
         trinbot.right_motor.write(-255);
         delay(long_delay);
         trinbot.left_motor.write(-255);
         trinbot.right_motor.write(255);
-        delay(long_delay);
-        Serial.println("No flame.");
-        state = HallwayNavigation2; // TEMPORARY <-------- CHANGE THIS FOR THE REAL DEAL
+        delay(long_delay*2);
+        Serial.println("Back to navigating.");
+        state = HallwayNavigation; // TEMPORARY <-------- CHANGE THIS FOR THE REAL DEAL
       }
       break;
       // *******************************

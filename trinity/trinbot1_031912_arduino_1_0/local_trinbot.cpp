@@ -2,6 +2,8 @@
 #include "local_trinbot.h"
 #include "local_DifferentialDrive.h"
 
+int stuckCounter = 0;
+int prevFrontDist = 0;
 
 IRSensor::IRSensor()
 {
@@ -26,6 +28,23 @@ float IRSensor::distance()
     return (9500.0 - 5.0 * (raw + 20.0)) / (3.0 * (raw + 20.0));
 }
 
+LineSensor::LineSensor()
+{
+    pin = -1;
+}
+
+void LineSensor::attach(byte pin0)
+{
+    pinMode(pin0, INPUT);
+    pin = pin0;
+}
+
+float LineSensor::reflectance()
+{
+    int raw = analogRead(pin);
+    return raw;
+}
+
 FlameSensor::FlameSensor()
 {
     pin = -1;
@@ -40,7 +59,7 @@ void FlameSensor::attach(byte pin0)
 
 float FlameSensor::read_filtered()
 {
-    return lpfilter.step(analogRead(pin));
+    return 1050 - lpfilter.step(analogRead(pin));
 }
 
 Trinbot::Trinbot() : DifferentialDrive()
@@ -86,25 +105,25 @@ Trinbot::Trinbot() : DifferentialDrive()
   yPos = locations[0].y_coord;
   
   wall_follow_dist = 10.0;
-  front_obs_dist = 18.0;
+  front_obs_dist = 18.8;
 }
 
 void Trinbot::init()
 {
   k_heading = 2.0;
   k_velocity = 1.0;
-  line_thresh = 200;
-  flameThresh = 40.0;
-  leftLineThresh = 800;
-  rightLineThresh = 800;
+  line_thresh = 210;
+  flameThresh = 700.0;
+  leftLineThresh = line_thresh;
+  rightLineThresh = line_thresh;
   co2Servo_up = 100;
   co2Servo_down = 0;
   
   attachMotor(4, 5);  // left motor
   attachMotor(7, 6);  // right motor
   left_motor.flipDirection();
-  frontServo.attach(9);  
-  co2Servo.attach(10);
+  frontServo.attach(3);  
+  co2Servo.attach(11);
   flDistSens.attach(A1);
   rlDistSens.attach(A9);
   frDistSens.attach(A11);
@@ -114,10 +133,14 @@ void Trinbot::init()
   
   co2Servo.write(co2Servo_up);
   
-  pinMode(11,INPUT);
+  lineSensLeft.attach(A14);
+  lineSensRight.attach(A13);
+
+ /* pinMode(11,INPUT);
   pinMode(12,INPUT);
   lineSensLeft.init((unsigned char[]) {11}, 1);
   lineSensRight.init((unsigned char[]) {12}, 1);
+  */
 }
 
 void Trinbot::update()
@@ -303,26 +326,40 @@ int Trinbot::sweepForFlame()
   } else {
     maxFlameAngle += 20;
   }
-  
-  Serial.print(maxFlameVal);
-  Serial.print(" ");
-  Serial.println(maxFlameAngle);
+
+  Serial.print("MaxFlameVal: ");
+  Serial.print(maxFlameVal2);
+  Serial.print("MaxFlameAngle: ");
+  Serial.println(maxFlameAngle2);
   delay(1000);
   frontServo.write(90);
-  maxFlameReading = maxFlameVal2;
-  maxFlameDir = maxFlameAngle2;
-  return maxFlameAngle2;
+  if(maxFlameVal > maxFlameVal2){
+    maxFlameReading = maxFlameVal;
+     maxFlameDir = maxFlameAngle;
+  }else{
+    maxFlameReading = maxFlameVal2;
+     maxFlameDir = maxFlameAngle2;
+  }
+  return maxFlameDir;
 }
 
 void Trinbot::checkLineSensors()
 {
-  unsigned int leftLine, rightLine;
+  /*unsigned int leftLine, rightLine;
   lineSensLeft.read(&leftLine);
   lineSensRight.read(&rightLine);
   line_left = leftLine < line_thresh;
+  line_right = rightLine < line_thresh;*/
+  unsigned int leftLine = lineSensLeft.reflectance();
+  unsigned int rightLine = lineSensRight.reflectance();
+  line_left = leftLine < line_thresh;
   line_right = rightLine < line_thresh;
 }
-
+void Trinbot::move(int speedRight, int speedLeft, int dlay){
+   left_motor.write(-speedLeft);
+   right_motor.write(-speedRight);
+   delay(dlay);
+}
 void Trinbot::detectWalls()
 {
    fr_wall = frDistSens.distance() < 30;
@@ -346,6 +383,20 @@ void Trinbot::followWall(WallSide side_to_follow)
 
     
     if (front < front_obs_dist) {
+      int tollerance = 3;
+      if(prevFrontDist > front - tollerance &&  prevFrontDist < front + tollerance){
+        stuckCounter ++;
+      }else{
+        stuckCounter = 0;
+      }
+      if(stuckCounter >= 15){
+       Serial.print("I got stuck! Backing up.");
+       Serial.println(" ");
+       left_motor.write(-100);
+       right_motor.write(-100);
+       delay(350);
+       stuckCounter = 0; 
+      }
       if(front < front_obs_dist/2){
         left_pwm = -125;
         right_pwm = 100;

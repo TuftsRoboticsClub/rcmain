@@ -15,15 +15,25 @@ struct Box {
 };
 
 //For wall following
-class IRSensor
-{
-public:
-    IRSensor();
-    void attach(byte pin0);
-    float distance();
+class IRSensor {
+    public:
+        IRSensor();
+        void attach(byte pin0);
+        float distance();
 
-private:
-    byte pin;
+    private:
+        byte pin;
+};
+
+//For line following
+class LineSensor {
+    public:
+        LineSensor();
+        void attach(byte pin0);
+        float reflectance();
+
+    private:
+        byte pin;
 };
 
 //For candle detection
@@ -56,6 +66,7 @@ public:
     void followWallSkipGaps(WallSide side_to_follow = Right);
     int getNearestLocation();
     void extinguish();
+    void move(int speedRight, int speedLeft, int duration);
     Box locations[5];
     
     byte enc_right_A, enc_left_A, enc_right_B, enc_left_B;
@@ -63,9 +74,10 @@ public:
     FlameSensor flameSens;
     Servo frontServo, co2Servo;
     IRSensor flDistSens, rlDistSens, frDistSens, rrDistSens, frontDistSens;
+    LineSensor lineSensLeft, lineSensRight;
     float xPos, yPos; //[cm]
-    QTRSensorsRC lineSensLeft; 
-    QTRSensorsRC lineSensRight; 
+    //QTRSensorsRC lineSensLeft; 
+    //QTRSensorsRC lineSensRight; 
     boolean line_left, line_right;
     boolean fr_wall, fl_wall, rr_wall, rl_wall, front_wall;
     float maxFlameReading;
